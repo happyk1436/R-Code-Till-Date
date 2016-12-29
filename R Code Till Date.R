@@ -14,16 +14,46 @@ library(dplyr)
 library(lubridate)
 library(plyr)
 
+str(spotfreight)
+summary(spotfreight)
+
+
+str(regionlookups)
+summary(regionlookups)
+write.csv(regionlookups)
+
+
+str(marketzips)
+summary(marketzips)
+write.csv(marketzips)
+
 
 str(equipmentcodes)
 summary(equipmentcodes)
+write.csv(equipmentcodes)
+
+
 
 # Preprocessing the data
 sum(is.na(spotfreight)) # checks for any rows with NA in the spotfreight data
 spotfreight <- na.omit(spotfreight) # removes all the rows with NA in one or more columns
-sum(is.na(spotfreight)) # checks for any rows with NA in the spotfreight data = 5620 na's 
-spotfreight <- na.omit(spotfreight) # removes all the rows with NA in one or more columns =  34693 records 
-summary(complete.cases(spotfreight)) # checks if any of the rows has NAs in any of its columns of the spotfreight data
+summary(complete.cases(spotfreight))# checks if any of the rows has NAs in any of its columns of the spotfreight data
 
+cat("Total orders count : " , length(spotfreight$ORDER_NBR))
+cat("Unique orders count : " , n_distinct(spotfreight$ORDER_NBR))
 
--92,10 +92,18 arrange(summarise(group_by(spotfreight, CUSTOMER_MILES), orders = n()), desc(-CU
+# There are multiple rows for the same data (like order_number with slight difference in zip, appt, etc...)
+
+# remove duplicate records (ignoring the "CREATED_DATE" field)
+spotfreight_unq <- spotfreight[!duplicated(spotfreight[,!(colnames(spotfreight) %in% c("CREATED_DATE"))]), ]
+
+# removes space and - characters from both FIRST_PICK_ZIP & LAST_DELIVERY_ZIP columns
+spotfreight$FIRST_PICK_ZIP <- gsub("[ -]", "", spotfreight$FIRST_PICK_ZIP) 
+spotfreight$LAST_DELIVERY_ZIP <- gsub("[ -]", "", spotfreight$LAST_DELIVERY_ZIP)
+
+# remove records with alphanumeric zip codes either in FIRST_PICK_ZIP or LAST_DELIVERY_ZIP or both
+check.numeric <- function(N){ !length(grep("[^[:digit:]]", as.character(N)))}
+spotfreight <- spotfreight[sapply(spotfreight$FIRST_PICK_ZIP, check.numeric) & sapply(spotfreight$LAST_DELIVERY_ZIP, check.numeric),] 
+
+# check & remove records with zero values in ORDER_COST field (the target variable)
+summary(spotfreight$ORDER_COST)
